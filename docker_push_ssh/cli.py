@@ -13,12 +13,8 @@
 # limitations under the License.
 import argparse
 import os
-import socket
 import sys
 import time
-from http import client
-from urllib import request
-from urllib.error import URLError
 
 from .command import Command
 
@@ -40,12 +36,17 @@ def waitForSshTunnelInit(retries=20, delay=1.0):
     for _ in range(retries):
         time.sleep(delay)
 
-        try:
-            response = request.urlopen("http://localhost:5000/v2/", timeout=5)
-        except (socket.error, URLError, client.BadStatusLine):
-            continue
+        sshCheckCommandResult = Command("docker", [
+            "exec",
+            "docker-push-ssh-tunnel",
+            "wget",
+            "-O", "/dev/null",
+            "-q",
+            "--timeout=5",
+            "http://localhost:5000/v2"
+        ]).environment_dict(os.environ).execute()
 
-        if response.getcode() == 200:
+        if not sshCheckCommandResult.failed():
             return True
 
     return False
